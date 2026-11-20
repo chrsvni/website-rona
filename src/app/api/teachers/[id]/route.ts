@@ -1,17 +1,38 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { getServerSession } from '@/lib/auth'
 import type { UserUpdateInput } from '@/generated/prisma/models'
+import bcrypt from 'bcryptjs'
 
 export async function GET(
   request: Request,
   props: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await getServerSession()
+    if (!session) {
+      return NextResponse.json(
+        { success: false, error: 'Silakan login terlebih dahulu.' },
+        { status: 401 }
+      )
+    }
+
     const { id } = await props.params
 
     const teacher = await prisma.user.findUnique({
       where: { id },
-      include: {
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        isVerified: true,
+        schoolName: true,
+        nip: true,
+        homeroomClass: true,
+        avatarUrl: true,
+        createdAt: true,
+        updatedAt: true,
         _count: {
           select: {
             students: true,
@@ -45,7 +66,19 @@ export async function PUT(
   props: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await getServerSession()
     const { id } = await props.params
+
+    if (!session || (session.role !== 'ADMIN' && session.id !== id)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Akses ditolak. Anda tidak memiliki wewenang untuk mengubah akun ini.',
+        },
+        { status: 403 }
+      )
+    }
+
     const body = await request.json()
     const {
       name,
@@ -156,14 +189,27 @@ export async function PUT(
           : existingUser.isVerified,
     }
 
-    // Jika admin mengisi password baru (reset password)
+    // Jika admin mengisi password baru (reset password), enkripsi dengan bcrypt
     if (password && password.toString().trim() !== '') {
-      updateData.password = password.toString().trim()
+      updateData.password = await bcrypt.hash(password.toString().trim(), 10)
     }
 
     const updatedTeacher = await prisma.user.update({
       where: { id },
       data: updateData,
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        isVerified: true,
+        schoolName: true,
+        nip: true,
+        homeroomClass: true,
+        avatarUrl: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     })
 
     return NextResponse.json({
@@ -187,6 +233,18 @@ export async function DELETE(
   props: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await getServerSession()
+    if (!session || session.role !== 'ADMIN') {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            'Akses ditolak. Hanya administrator yang dapat menghapus akun guru.',
+        },
+        { status: 403 }
+      )
+    }
+
     const { id } = await props.params
 
     const teacher = await prisma.user.findUnique({

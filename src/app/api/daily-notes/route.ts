@@ -4,6 +4,14 @@ import { getServerSession } from '@/lib/auth'
 
 export async function POST(request: Request) {
   try {
+    const session = await getServerSession()
+    if (!session) {
+      return NextResponse.json(
+        { success: false, error: 'Silakan login terlebih dahulu.' },
+        { status: 401 }
+      )
+    }
+
     const { studentId, note, tag } = await request.json()
 
     if (!studentId || !note) {
@@ -13,16 +21,9 @@ export async function POST(request: Request) {
       )
     }
 
-    const session = await getServerSession()
-    let teacher = session?.id
-      ? await prisma.user.findUnique({ where: { id: session.id } })
-      : null
-
-    if (!teacher) {
-      teacher = await prisma.user.findFirst({
-        where: { role: 'GURU' },
-      })
-    }
+    const teacher = await prisma.user.findUnique({
+      where: { id: session.id },
+    })
 
     if (!teacher) {
       return NextResponse.json(

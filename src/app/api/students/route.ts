@@ -6,13 +6,20 @@ import type { StudentWhereInput } from '@/generated/prisma/models'
 export async function GET(request: Request) {
   try {
     const session = await getServerSession()
+    if (!session) {
+      return NextResponse.json(
+        { success: false, error: 'Silakan login terlebih dahulu.' },
+        { status: 401 }
+      )
+    }
+
     const { searchParams } = new URL(request.url)
     const search = searchParams.get('search')?.trim() || ''
     const className = searchParams.get('className')?.trim() || ''
 
     const whereClause: StudentWhereInput = {}
 
-    if (session && session.role === 'GURU') {
+    if (session.role === 'GURU') {
       if (session.homeroomClass) {
         whereClause.className = session.homeroomClass
       } else {
@@ -22,7 +29,7 @@ export async function GET(request: Request) {
 
     if (
       className &&
-      (!session || session.role !== 'GURU' || !session.homeroomClass)
+      (session.role !== 'GURU' || !session.homeroomClass)
     ) {
       whereClause.className = className
     }
@@ -63,6 +70,13 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const session = await getServerSession()
+    if (!session) {
+      return NextResponse.json(
+        { success: false, error: 'Silakan login terlebih dahulu.' },
+        { status: 401 }
+      )
+    }
+
     const body = await request.json()
     const { name, gender, age, className, parentName, contactNumber, notes } =
       body
@@ -89,29 +103,25 @@ export async function POST(request: Request) {
     }
 
     // Tentukan guru pengampu dan kelas otomatis
-    let teacherId = session?.id
+    let teacherId = session.id
     let targetClass = className
 
-    if (session && session.role === 'GURU') {
+    if (session.role === 'GURU') {
       teacherId = session.id
       // Otomatis kunci kelas siswa ke kelas wali kelas guru yang bersangkutan
       if (session.homeroomClass) {
         targetClass = session.homeroomClass
       }
-    }
-
-    if (!teacherId) {
-      const defaultTeacher = await prisma.user.findFirst({
-        where: { role: 'GURU' },
-      })
-      teacherId = defaultTeacher?.id
-    }
-
-    if (!teacherId) {
-      return NextResponse.json(
-        { success: false, error: 'Data guru pengampu tidak ditemukan.' },
-        { status: 404 }
-      )
+    } else {
+      // Jika Admin menambahkan siswa, izinkan menentukan guru atau ambil guru kelas tersebut
+      const matchedTeacher = targetClass
+        ? await prisma.user.findFirst({
+            where: { role: 'GURU', homeroomClass: targetClass },
+          })
+        : null
+      if (matchedTeacher) {
+        teacherId = matchedTeacher.id
+      }
     }
 
     const newStudent = await prisma.student.create({
@@ -119,8 +129,8 @@ export async function POST(request: Request) {
         name: name.toString().trim(),
         gender,
         age: age ? parseInt(age.toString()) : null,
-        className: targetClass || (session?.homeroomClass ?? 'Kelas 3A'),
-        schoolName: session?.schoolName || 'SD Negeri Binaan',
+        className: targetClass || session.homeroomClass || 'Kelas 1',
+        schoolName: session.schoolName || 'SD Negeri Binaan',
         parentName: parentName ? parentName.toString().trim() : null,
         contactNumber: contactNumber ? contactNumber.toString().trim() : null,
         notes: notes ? notes.toString().trim() : null,

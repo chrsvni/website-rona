@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getServerSession } from "@/lib/auth";
 
 export async function GET(
   request: Request,
@@ -36,6 +37,17 @@ export async function PUT(
   props: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await getServerSession();
+    if (!session || session.role !== "ADMIN") {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Akses ditolak. Hanya administrator yang dapat memperbarui artikel.",
+        },
+        { status: 403 }
+      );
+    }
+
     const { id } = await props.params;
     const body = await request.json();
     const { title, category, type, excerpt, content, author, sourceUrl, publishedDate } = body;
@@ -78,6 +90,17 @@ export async function DELETE(
   props: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await getServerSession();
+    if (!session || session.role !== "ADMIN") {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Akses ditolak. Hanya administrator yang dapat menghapus artikel.",
+        },
+        { status: 403 }
+      );
+    }
+
     const { id } = await props.params;
 
     await prisma.educationArticle.delete({

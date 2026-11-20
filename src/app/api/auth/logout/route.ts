@@ -11,6 +11,9 @@ export async function POST() {
     name: SESSION_COOKIE_NAME,
     value: "",
     path: "/",
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
     maxAge: 0,
   });
 

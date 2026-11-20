@@ -1,11 +1,20 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { getServerSession } from '@/lib/auth'
 
 export async function GET(
   request: Request,
   props: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await getServerSession()
+    if (!session) {
+      return NextResponse.json(
+        { success: false, error: 'Silakan login terlebih dahulu.' },
+        { status: 401 }
+      )
+    }
+
     const { id } = await props.params
 
     const screening = await prisma.screening.findUnique({

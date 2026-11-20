@@ -7,6 +7,14 @@ export async function GET(
   props: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await getServerSession()
+    if (!session) {
+      return NextResponse.json(
+        { success: false, error: 'Silakan login terlebih dahulu.' },
+        { status: 401 }
+      )
+    }
+
     const { id } = await props.params
 
     const student = await prisma.student.findUnique({
@@ -55,6 +63,12 @@ export async function PUT(
 ) {
   try {
     const session = await getServerSession()
+    if (!session) {
+      return NextResponse.json(
+        { success: false, error: 'Silakan login terlebih dahulu.' },
+        { status: 401 }
+      )
+    }
     const { id } = await props.params
     const body = await request.json()
     const { name, gender, age, className, parentName, contactNumber, notes } =
@@ -171,6 +185,12 @@ export async function DELETE(
 ) {
   try {
     const session = await getServerSession()
+    if (!session) {
+      return NextResponse.json(
+        { success: false, error: 'Silakan login terlebih dahulu.' },
+        { status: 401 }
+      )
+    }
     const { id } = await props.params
 
     const student = await prisma.student.findUnique({

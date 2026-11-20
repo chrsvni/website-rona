@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { verifySessionToken, SESSION_COOKIE_NAME } from '@/lib/auth'
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   if (
@@ -13,15 +14,10 @@ export function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  const sessionCookie = request.cookies.get('rona_session')
-  let user: { id: string; role: 'GURU' | 'ADMIN'; name: string } | null = null
-  if (sessionCookie?.value) {
-    try {
-      user = JSON.parse(decodeURIComponent(sessionCookie.value))
-    } catch {
-      user = null
-    }
-  }
+  const sessionCookie = request.cookies.get(SESSION_COOKIE_NAME)
+  const user = sessionCookie?.value
+    ? await verifySessionToken(sessionCookie.value)
+    : null
 
   const isLoginPage =
     pathname === '/login' ||

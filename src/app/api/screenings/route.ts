@@ -6,6 +6,14 @@ import type { ScreeningWhereInput } from '@/generated/prisma/models'
 
 export async function GET(request: Request) {
   try {
+    const session = await getServerSession()
+    if (!session) {
+      return NextResponse.json(
+        { success: false, error: 'Silakan login terlebih dahulu.' },
+        { status: 401 }
+      )
+    }
+
     const { searchParams } = new URL(request.url)
     const studentId = searchParams.get('studentId')
     const category = searchParams.get('category')
@@ -74,17 +82,16 @@ export async function POST(request: Request) {
       )
     }
 
-    // Guru Pengampu dari sesi login (fallback ke guru default jika sesi belum terdeteksi)
+    // Guru Pengampu dari sesi login yang terverifikasi
     const session = await getServerSession()
-    let teacher = session?.id
-      ? await prisma.user.findUnique({ where: { id: session.id } })
-      : null
-
-    if (!teacher) {
-      teacher = await prisma.user.findFirst({
-        where: { role: 'GURU' },
-      })
+    if (!session) {
+      return NextResponse.json(
+        { success: false, error: 'Silakan login terlebih dahulu.' },
+        { status: 401 }
+      )
     }
+
+    const teacher = await prisma.user.findUnique({ where: { id: session.id } })
 
     if (!teacher) {
       return NextResponse.json(

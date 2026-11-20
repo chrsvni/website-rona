@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getServerSession } from "@/lib/auth";
 import type { EducationArticleWhereInput } from "@/generated/prisma/models";
 
 export async function GET(request: Request) {
@@ -46,6 +47,17 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const session = await getServerSession();
+    if (!session || session.role !== "ADMIN") {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Akses ditolak. Hanya administrator yang dapat menambahkan materi edukasi.",
+        },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const { 
       title, 

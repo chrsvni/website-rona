@@ -1,9 +1,19 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { getServerSession } from '@/lib/auth'
 import type { UserWhereInput } from '@/generated/prisma/models'
+import bcrypt from 'bcryptjs'
 
 export async function GET(request: Request) {
   try {
+    const session = await getServerSession()
+    if (!session) {
+      return NextResponse.json(
+        { success: false, error: 'Silakan login terlebih dahulu.' },
+        { status: 401 }
+      )
+    }
+
     const { searchParams } = new URL(request.url)
     const search = searchParams.get('search') || ''
 
@@ -23,7 +33,18 @@ export async function GET(request: Request) {
 
     const teachers = await prisma.user.findMany({
       where: whereClause,
-      include: {
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        isVerified: true,
+        schoolName: true,
+        nip: true,
+        homeroomClass: true,
+        avatarUrl: true,
+        createdAt: true,
+        updatedAt: true,
         _count: {
           select: {
             students: true,
@@ -48,6 +69,18 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const session = await getServerSession()
+    if (!session || session.role !== 'ADMIN') {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            'Akses ditolak. Hanya administrator yang dapat mendaftarkan akun guru.',
+        },
+        { status: 403 }
+      )
+    }
+
     const body = await request.json()
     const { name, email, password, nip, schoolName, homeroomClass } = body
 
@@ -139,11 +172,14 @@ export async function POST(request: Request) {
       )
     }
 
+    // Enkripsi kata sandi menggunakan bcrypt
+    const hashedPassword = await bcrypt.hash(password.toString().trim(), 10)
+
     const newTeacher = await prisma.user.create({
       data: {
         name: name.toString().trim(),
         email: cleanEmail,
-        password: password.toString().trim(),
+        password: hashedPassword,
         role: 'GURU',
         isVerified: true,
         schoolName: schoolName
@@ -151,6 +187,19 @@ export async function POST(request: Request) {
           : 'SD Negeri Binaan',
         nip: cleanNip,
         homeroomClass: cleanHomeroom,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        isVerified: true,
+        schoolName: true,
+        nip: true,
+        homeroomClass: true,
+        avatarUrl: true,
+        createdAt: true,
+        updatedAt: true,
       },
     })
 

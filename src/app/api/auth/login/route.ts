@@ -1,6 +1,12 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { SESSION_COOKIE_NAME, UserSession } from '@/lib/auth'
+import {
+  SESSION_COOKIE_NAME,
+  SESSION_MAX_AGE,
+  UserSession,
+  createSessionToken,
+} from '@/lib/auth'
+import bcrypt from 'bcryptjs'
 
 export async function POST(request: Request) {
   try {
@@ -22,7 +28,44 @@ export async function POST(request: Request) {
       },
     })
 
-    if (!user || user.password !== password) {
+    if (!user) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            'Kredensial tidak valid. Silakan periksa email/NIP dan kata sandi Anda.',
+        },
+        { status: 401 }
+      )
+    }
+
+    // Verifikasi password (dukung bcrypt hash dan fallback plaintext dengan auto-upgrade)
+    let isPasswordValid = false
+    const isBcryptHash =
+      user.password.startsWith('$2a$') ||
+      user.password.startsWith('$2b$') ||
+      user.password.startsWith('$2y$')
+
+    if (isBcryptHash) {
+      isPasswordValid = await bcrypt.compare(password, user.password)
+    } else {
+      // Akun lama yang belum ter-hash
+      if (user.password === password) {
+        isPasswordValid = true
+        // Otomatis tingkatkan keamanan password ke bcrypt hash
+        try {
+          const hashedPassword = await bcrypt.hash(password, 10)
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { password: hashedPassword },
+          })
+        } catch (hashErr) {
+          console.error('Failed to auto-upgrade legacy password hash:', hashErr)
+        }
+      }
+    }
+
+    if (!isPasswordValid) {
       return NextResponse.json(
         {
           success: false,
@@ -56,7 +99,8 @@ export async function POST(request: Request) {
       avatarUrl: user.avatarUrl,
     }
 
-    const cookieValue = encodeURIComponent(JSON.stringify(sessionData))
+    // Buat token bertanda tangan digital (HMAC-SHA256)
+    const sessionToken = await createSessionToken(sessionData)
 
     const response = NextResponse.json({
       success: true,
@@ -66,10 +110,12 @@ export async function POST(request: Request) {
 
     response.cookies.set({
       name: SESSION_COOKIE_NAME,
-      value: cookieValue,
+      value: sessionToken,
       path: '/',
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7, // 7 hari
+      maxAge: SESSION_MAX_AGE,
     })
 
     return response

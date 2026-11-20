@@ -1,17 +1,22 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { getServerSession } from '@/lib/auth'
 
 export async function POST(request: Request) {
   try {
+    const session = await getServerSession()
+    if (!session) {
+      return NextResponse.json(
+        { success: false, error: 'Silakan login terlebih dahulu.' },
+        { status: 401 }
+      )
+    }
+
     const { articleId } = await request.json()
 
-    const teacher = await prisma.user.findFirst({
-      where: { role: 'GURU' },
-    })
-
-    if (!teacher || !articleId) {
+    if (!articleId) {
       return NextResponse.json(
-        { success: false, error: 'Parameter tidak lengkap.' },
+        { success: false, error: 'ID materi wajib disertakan.' },
         { status: 400 }
       )
     }
@@ -19,7 +24,7 @@ export async function POST(request: Request) {
     const existing = await prisma.bookmark.findUnique({
       where: {
         userId_articleId: {
-          userId: teacher.id,
+          userId: session.id,
           articleId,
         },
       },
@@ -33,7 +38,7 @@ export async function POST(request: Request) {
     } else {
       await prisma.bookmark.create({
         data: {
-          userId: teacher.id,
+          userId: session.id,
           articleId,
         },
       })
