@@ -1,0 +1,137 @@
+// Prisma schema for Rona - Deteksi Dini Kesulitan Belajar Siswa
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id           String        @id @default(cuid())
+  name         String
+  email        String        @unique
+  password     String
+  role         String        @default("GURU") // "GURU" | "ADMIN"
+  isVerified   Boolean       @default(true)
+  schoolName   String?       @default("SD Negeri 1 Percontohan")
+  nip          String?
+  homeroomClass String?       // Kelas binaan / wali kelas (misal: "Kelas 3A")
+  avatarUrl    String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  students     Student[]
+  screenings   Screening[]
+  bookmarks    Bookmark[]
+  dailyNotes   DailyNote[]
+}
+
+model Student {
+  id            String       @id @default(cuid())
+  nisn          String?
+  name          String
+  gender        String       // "Laki-laki" | "Perempuan"
+  birthDate     DateTime?
+  age           Int?
+  className     String       // e.g. "Kelas 3A"
+  schoolName    String       @default("SD Negeri 1 Percontohan")
+  parentName    String?
+  contactNumber String?
+  notes         String?
+  
+  teacherId     String
+  teacher       User         @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  screenings    Screening[]
+  dailyNotes    DailyNote[]
+
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+}
+
+model EducationArticle {
+  id           String      @id @default(cuid())
+  title        String
+  slug         String      @unique
+  category     String      // "DISLEKSIA" | "DISGRAFIA" | "DISKALKULIA" | "UMUM"
+  type         String      @default("MATERI") // "MATERI" | "PANDUAN_METODE" | "ARTIKEL_MEDIA"
+  excerpt      String
+  content      String      // Markdown or HTML
+  readingTime  String      @default("5 menit")
+  author       String      @default("Tim Ahli Rona")
+  sourceUrl    String?     // URL sumber eksternal (jurnal, artikel, portal berita, Google)
+  publishedDate String?    // Tanggal / tahun terbit sumber (misal: "2024" atau "14 Mei 2024")
+  coverImage   String?
+  published    Boolean     @default(true)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  bookmarks    Bookmark[]
+}
+
+model Bookmark {
+  id         String            @id @default(cuid())
+  userId     String
+  articleId  String
+  user       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  article    EducationArticle  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  createdAt  DateTime          @default(now())
+
+  @@unique([userId, articleId])
+}
+
+model Screening {
+  id                String       @id @default(cuid())
+  studentId         String
+  teacherId         String
+  student           Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  teacher           User         @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  // Modul / Kategori yang diskrining
+  category          String       // "DISLEKSIA" | "DISGRAFIA" | "DISKALKULIA" | "KOMPREHENSIF"
+  
+  // Panduan Tugas & Bukti Observasi
+  taskName          String?      // Contoh: "Membaca Nyaring Teks Narasi Pendek"
+  taskProofNotes    String?      // Deskripsi bukti tugas yang sudah dikerjakan siswa
+  taskProofUrl      String?      // Link atau file attachment jika ada
+  
+  // Jawaban observasi perilaku (JSON string array atau record data)
+  behaviorAnswers   String       // JSON string: [{indicatorId, question, category, score, note}]
+  
+  // Indikasi Harian
+  dailyIndication   String?      // Catatan pengamatan berkala dalam sesi ini
+  dailyGeneralNote  String?      // Catatan tambahan perkembangan murid
+  
+  // Skor yang dihitung otomatis oleh Sistem (bukan oleh guru)
+  totalScore        Float        @default(0)
+  maxPossibleScore  Float        @default(100)
+  percentageScore   Float        @default(0)
+  
+  // Tingkat Indikasi yang Ditetapkan Sistem: "Rendah" | "Sedang" | "Tinggi"
+  riskLevel         String       @default("Rendah")
+  
+  // Rekomendasi Otomatis dari Sistem (Rekomendasi diatur oleh sistem bukan guru)
+  systemRecommendation String
+  actionPlan           String    // Rencana tindak lanjut terstruktur
+  
+  status            String       @default("COMPLETED") // "DRAFT" | "COMPLETED"
+  completedAt       DateTime?    @default(now())
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+}
+
+model DailyNote {
+  id         String    @id @default(cuid())
+  studentId  String
+  teacherId  String
+  date       DateTime  @default(now())
+  note       String
+  tag        String?   // "Fokus", "Membaca", "Menulis", "Menghitung", "Emosi"
+  student    Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  teacher    User      @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+}

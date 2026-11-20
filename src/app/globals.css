@@ -1,26 +1,109 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f4f8fb;
+  --foreground: #001D39;
+  
+  --rona-navy: #001D39;
+  --rona-ocean: #0A4174;
+  --rona-steel: #49769F;
+  --rona-teal: #4E8EA2;
+  --rona-cyan: #6EA2B3;
+  --rona-sky: #7BBDE8;
+  --rona-ice: #BDD8E9;
+
+  --card: #ffffff;
+  --card-foreground: #001D39;
+  --primary: #0A4174;
+  --primary-foreground: #ffffff;
+  --secondary: #e8f3fa;
+  --secondary-foreground: #0A4174;
+  --muted: #f0f5f9;
+  --muted-foreground: #49769F;
+  --accent: #e0eff8;
+  --accent-foreground: #001D39;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --border: #d4e5f2;
+  --input: #d4e5f2;
+  --ring: #4E8EA2;
+  --radius: 1rem;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-rona-navy: #001D39;
+  --color-rona-ocean: #0A4174;
+  --color-rona-steel: #49769F;
+  --color-rona-teal: #4E8EA2;
+  --color-rona-cyan: #6EA2B3;
+  --color-rona-sky: #7BBDE8;
+  --color-rona-ice: #BDD8E9;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: linear-gradient(135deg, #f4f8fb 0%, #e9f3f9 50%, #f0f7fc 100%);
+  color: #001D39;
+  min-height: 100vh;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Glassmorphism Classes */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  box-shadow: 0 10px 30px -5px rgba(10, 65, 116, 0.08), 0 4px 6px -2px rgba(0, 29, 57, 0.03);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(189, 216, 233, 0.45);
+  box-shadow: 0 8px 24px -4px rgba(0, 29, 57, 0.06);
+}
+
+.glass-card-hover {
+  transition: all 0.25s ease-in-out;
+}
+.glass-card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 30px -4px rgba(10, 65, 116, 0.12);
+  border-color: rgba(78, 142, 162, 0.4);
+}
+
+.glass-input {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(110, 162, 179, 0.35);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+.glass-input:focus {
+  outline: none;
+  border-color: #4E8EA2;
+  box-shadow: 0 0 0 3px rgba(123, 189, 232, 0.35);
+}
+
+/* Print styles for Kartu Hasil Skrining PDF / Print */
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+  .glass-panel, .glass-card {
+    border: 1px solid #ccc !important;
+    box-shadow: none !important;
+    background: #ffffff !important;
+  }
 }
